@@ -1,0 +1,18 @@
+# Archivos y carpetas a ignorar para proyectos en C
+# Compilados
+build/
+bin/
+*.o
+*.a
+*.so
+
+# Archivos temporales
+*~
+*.swp
+
+# Archivos de configuración del editor
+.vscode/
+.idea/
+
+# Datos generados
+*.bin
