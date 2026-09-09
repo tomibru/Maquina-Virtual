@@ -35,7 +35,7 @@ DS = 27
 */
 
 typedef struct {
-    // Cada refistro es de 4 bytes
+    // Cada registro es de 4 bytes
     int32_t vec[NUM_REGS];
 } Registros;
 

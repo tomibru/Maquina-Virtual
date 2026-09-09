@@ -9,3 +9,4 @@ typedef struct {
 } Memoria;
 
 void inicializar_memoria(Memoria *m);
+
