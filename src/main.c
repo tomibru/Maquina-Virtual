@@ -3,7 +3,14 @@
 #include <stdint.h>
 #include "mv.h"
 
-// 1. Validación de archivo
+void validacion_arch (char *ruta_archivo, Maquina_Virtual *mv);
+
+
+int main() {
+    Maquina_Virtual mv;
+    inicilaizarMV(&mv);
+    validacion_arch(archivo, &mv);
+}
 
 void validacion_arch (char *ruta_archivo, Maquina_Virtual *mv) {
     FILE *arch = fopen(ruta_archivo, "rb");
@@ -40,7 +47,6 @@ void validacion_arch (char *ruta_archivo, Maquina_Virtual *mv) {
                 nuentra maquina virtual
                 */
 
-                inicializarMV(mv);
                 mv->ts.vec[0].base = 0;
                 mv->ts.vec[0].tamanio = tamCodigo;
                 mv->ts.vec[1].base = tamCodigo;
