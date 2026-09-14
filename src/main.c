@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include "mv.h"
 
@@ -18,11 +21,6 @@ int main(int argc, char *argv[]) {
     validacion_arch(argv[1], &mv); //Valida VMX26
 }
 
-
-
-
-
-
 void validacion_arch (char *ruta_archivo, Maquina_Virtual *mv) {
     FILE *arch = fopen(ruta_archivo, "rb");
     if (arch == NULL)
@@ -39,12 +37,12 @@ void validacion_arch (char *ruta_archivo, Maquina_Virtual *mv) {
             printf("Error: Archivo inválido. Identificador incorrecto.\n");
         else {
 
-            //Leemos el sexto byte, que indica la versión
+//Leemos el sexto byte, que indica la versión
             uint8_t version;
             fread(&version, sizeof(uint8_t), 1, arch);
 
             // Validamos que sea version 1
-            if (version!=1)
+if (version != 1)
                 printf("Error: Archivo inválido. Versión incorrecta.\n");
             else {
                 inicializarMV(mv);
