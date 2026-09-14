@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include "mv.h"
 
@@ -117,7 +120,6 @@ int Traducir_DL_a_DF(Maquina_Virtual *mv, uint32_t dir_logica, uint16_t cant_byt
                 *dir_fisica_calculada=dir_fisica;
                 devolucion=1;
             }
-        }
     }
     return devolucion;
 }
