@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "mv_const.h"
+#include <stdint.h>
 
 typedef struct {
     // La base y el tamaño ocupan 2 bytes cada uno
