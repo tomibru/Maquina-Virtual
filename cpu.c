@@ -1,4 +1,7 @@
+#include "cpu.h"
+
 typedef void (*InstruccionFunc)(Maquina_Virtual *mv);
+
 InstruccionFunc tabla_opc[32]={
     [0x00] = ejecutar_SYS,   // Llamadas al sistema (READ / WRITE)
     [0x0F] = ejecutar_STOP,  // Detener ejecución
@@ -147,7 +150,7 @@ void ejecutar_SUB(Maquina_Virtual *mv){
     guardar_valor_operando(mv,mv->regs.vec[2] ,resultado);
     
     // 4. Calcular Acarreo (C): vuelta completa sin signo (resultado menor a un sumando)
-    uint8_t c = (op1 < op2) ? 1 : 0; // Préstamo (Borrow)
+    uint8_t c = (op1 >= op2) ? 1 : 0; // Préstamo (Borrow)
 
     // 5. Calcular Overflow (V): incoherencia de signos (Pos+Pos=Neg o Neg+Neg=Pos)
     uint8_t signo_op1 = (op1 >> 31) & 1;
@@ -165,7 +168,7 @@ void ejecutar_CMP(Maquina_Virtual *mv){
     uint32_t resultado = op1 - op2;
     
     // 4. Calcular Acarreo (C): vuelta completa sin signo (resultado menor a un sumando)
-    uint8_t c = (op1 < op2) ? 1 : 0; // Préstamo (Borrow)
+    uint8_t c = (op1 >= op2) ? 1 : 0; // Préstamo (Borrow)
 
     // 5. Calcular Overflow (V): incoherencia de signos (Pos+Pos=Neg o Neg+Neg=Pos)
     uint8_t signo_op1 = (op1 >> 31) & 1;
@@ -182,22 +185,15 @@ void ejecutar_MUL(Maquina_Virtual *mv){
     uint32_t op2 = obtener_valor_operando(mv, mv->regs.vec[3]);
     uint32_t resultado = op1 * op2;
     guardar_valor_operando(mv,mv->regs.vec[2] ,resultado);
+
+    uint64_t producto_sin_signo = (uint64_t)op1 * (uint64_t)op2;
     
     //(C): Multiplicación limpia en 64 bits
-    uint8_t c = (((uint64_t)op1 * (uint64_t)op2) > 0xFFFFFFFF) ? 1 : 0;
+    uint8_t c = (producto_sin_signo > 0xFFFFFFFF) ? 1 : 0;
 
     //(V): Evaluamos si el signo del resultado es lógicamente imposible
-    uint8_t s1 = (op1 >> 31) & 1;
-    uint8_t s2 = (op2 >> 31) & 1;
-    uint8_t sr = (resultado >> 31) & 1;
-
-    uint8_t v = 0;
-    if (s1 == s2 && sr != 0)// Mismo signo debería dar positivo (0)
-        v = 1;
-    else 
-        if (s1 != s2 && sr != 1)// Distinto signo debería dar negativo (1)
-            v = 1;
-
+    int64_t producto_con_signo = (int64_t)(int32_t) op1 * (int64_t)(int32_t) op2;
+    uint8_t v = (producto_con_signo < INT32_MIN || producto_con_signo > INT32_MAX) ? 1 : 0;
     modificar_flags_CC(mv,resultado,c,v);
 }
 
@@ -264,31 +260,96 @@ void ejecutar_SWAP(Maquina_Virtual *mv) {
 void ejecutar_SHL(Maquina_Virtual *mv){
     uint32_t op1 = obtener_valor_operando(mv, mv->regs.vec[2]);
     uint32_t op2 = obtener_valor_operando(mv, mv->regs.vec[3]);
-    uint32_t resultado = op1 << op2;
-    guardar_valor_operando(mv,mv->regs.vec[2] ,resultado);
+
+    uint32_t resultado;
+    uint8_t c, v;
+
+    // Si se desplaza 32 posiciones o mas el registro queda en 0
+    if(op2 >= 32) {
+        resultado = 0;
+
+        // El acarreo depende del último bit que se callo
+        // Si se despalzo exactamente 32, el bit que se cayo era el bit 0 original
+        // En casos donde el desplazamiento sea mayor el C quedara en 0
+        if (op2 == 32)
+            c = op1 & 1;
+        else
+            c = 0;
+
+        // Si habia unos y se perdio todo hay desbordamiento
+        v = (op1 != 0) ? 1: 0;
+    }
+    else {
+        resultado = op1 << op2;
+
+        c = (op2 == 0) ? 0 : ((op1 >> (32 - op2)) & 1);
+        
+        // Convertimos op1 a int32_t y lo multiplicamos por (2 elevado a la n) en 64 bits.
+        int64_t multiplicacion_real = (int64_t)(int32_t)op1 * ((int64_t)1 << op2);
     
-    modificar_flags_CC(mv,resultado,0,0);
+        // Si el resultado real se pasa de los límites de 32 bits con signo, hay desbordamiento.
+        v = (multiplicacion_real < INT32_MIN || multiplicacion_real > INT32_MAX) ? 1 : 0;
+    }
+
+    guardar_valor_operando(mv,mv->regs.vec[2] ,resultado);
+    modificar_flags_CC(mv,resultado,c,v);
 }
 
 void ejecutar_SHR(Maquina_Virtual *mv){
     uint32_t op1 = obtener_valor_operando(mv, mv->regs.vec[2]);
     uint32_t op2 = obtener_valor_operando(mv, mv->regs.vec[3]);
-    uint32_t resultado = op1 >> op2;
+
+    uint32_t resultado;
+    uint8_t c, v;
+
+    if(op2 >= 32) {
+        resultado = 0;
+        if (op2 == 32) {
+            c = (op1 >> 31) & 1;
+            v = (op1 != 0) ? 1 : 0;
+        }
+    }
+    else {
+
+        if(op2 == 0) {
+            resultado = op1;
+        c = 0;
+        v = 0; // no-op: no puede haber overflow
+        }
+
+        else  {
+            resultado = op1 >> op2;
+            // Acarreo: El último bit que salió por la derecha (estaba en la posición op2 - 1)
+            c = (op2 == 0) ? 0 : ((op1 >> (op2 - 1)) & 1);
+            // Si el número iriginal era negativo (bit 31 en 1), al volverse 0 hay desbordamiento (cambio de signo)
+            v = (op1 & 0x80000000) ? 1 : 0;
+        }
+    }
+
     guardar_valor_operando(mv,mv->regs.vec[2] ,resultado);
     
-    modificar_flags_CC(mv,resultado,0,0);
+    modificar_flags_CC(mv,resultado,c,v);
 }
 
 void ejecutar_SAR(Maquina_Virtual *mv){
-    //(Shift Right Aritmético): Desplaza a la derecha conservando el signo (propaga el bit 31).
     uint32_t op1 = obtener_valor_operando(mv, mv->regs.vec[2]);
     uint32_t op2 = obtener_valor_operando(mv, mv->regs.vec[3]);
-    // Convertimos a entero con signo de 32 bits y desplazamos
-    int32_t op1_con_signo = (int32_t)op1;
-    uint32_t resultado = (uint32_t)(op1_con_signo >> op2);
-    guardar_valor_operando(mv,mv->regs.vec[2] ,resultado);
     
-    modificar_flags_CC(mv,resultado,0,0);
+    uint32_t resultado;
+    uint8_t c;
+
+    if (op2 >= 32) {
+        resultado = (op1 & 0x80000000) ? 0xFFFFFFFF : 0;
+        c = (op1 & 0x80000000) ? 1 : 0;
+    }
+    else {
+        int32_t op1_con_signo = (int32_t)op1;
+        resultado = (uint32_t)(op1_con_signo >> op2);
+        c = (op2 == 0) ? 0 : ((op1 >> (op2-1)) & 1);
+    }
+
+    guardar_valor_operando(mv,mv->regs.vec[2] ,resultado);
+    modificar_flags_CC(mv,resultado,c,0);
 }
 
 void ejecutar_LDH(Maquina_Virtual *mv){
@@ -327,84 +388,94 @@ void ejecutar_SYS(Maquina_Virtual *mv) {
     uint16_t cant_valores = mv->regs.vec[12] & 0x0000FFFF;
     uint16_t tamanio = (mv->regs.vec[12] >> 16) & 0x0000FFFF;
     uint32_t eax = mv->regs.vec[10];
+
+    // Mantebemos la direccion logica actual iniciada en EDX (reg. 13)
     uint32_t dir_fisica;
+    uint32_t dir_logica_actual = mv->regs.vec[13];
 
-    // Traducimos la dirección lógica inicial almacenada en EDX a física
-    if (Traducir_DL_a_DF(mv, mv->regs.vec[13], 1, 0, &dir_fisica)) {
+    // --- READ (SYS 1) ---
+    if (op == 1) { 
+       for (int i = 0; i < cant_valores; i++) {
 
-        // --- READ (SYS 1) ---
-        if (op == 1) { 
-            for (int i = 0; i < cant_valores; i++) {
-                printf("[%04X]: ", dir_fisica);
-                uint32_t valor = 0;
-
-                // Modos de lectura según los bits de EAX
-                if (eax & 0x01) {        // Decimal
-                    scanf("%u", &valor);
-                } else if (eax & 0x02) { // Carácter
-                    char c;
-                    scanf(" %c", &c);
-                    valor = (uint32_t)c;
-                } else if (eax & 0x08) { // Hexadecimal
-                    scanf("%x", &valor);
-                } else if (eax & 0x04) { // Octal
-                    scanf("%o", &valor);
-                }
-
-                // Guardado byte por byte (Big Endian)
-                for (int b = tamanio - 1; b >= 0; b--) {
-                    mv->mem.ram[dir_fisica + b] = valor & 0xFF;
-                    valor >>= 8;
-                }
-
-                dir_fisica += tamanio;
+            // Traducimos en CADA iteracion para validar los limites del segmento por cada celda
+            if(!Traducir_DL_a_DF(mv, dir_logica_actual, tamanio, 0, &dir_fisica)) {
+                printf("Error: fallo de segmento en la lectura. \n");
+                mv->regs.vec[0] = STOP;
+                return;
             }
-        } 
-        // --- WRITE (SYS 2) ---
-        else if (op == 2) { 
-            for (int i = 0; i < cant_valores; i++) {
-                printf("[%04X]: ", dir_fisica);
+            
+            printf("[%04X]: ", dir_fisica);
+            uint32_t valor = 0;
 
-                // Reconstrucción del valor desde la RAM (Big Endian)
-                uint32_t valor = 0;
-                for (int b = 0; b < tamanio; b++) {
-                    uint32_t byte_ram = (unsigned char)mv->mem.ram[dir_fisica + b];
-                    valor = (valor << 8) | byte_ram; // Mueve los bits hacia arriba y suma el nuevo byte
-                }
-
-                // Salida acumulativa de formatos según banderas activas en EAX
-                if (eax & 0x10) { // Binario
-                    printf("0b");
-                    int total_bits = tamanio * 8;
-                    for (int bit = total_bits - 1; bit >= 0; bit--) {
-                        printf("%u", (valor >> bit) & 1);
-                    }
-                    printf(" ");
-                }
-                if (eax & 0x08) { // Hexadecimal
-                    printf("0x%X ", valor);
-                }
-                if (eax & 0x04) { // Octal
-                    printf("0o%o ", valor);
-                }
-                if (eax & 0x02) { // ASCII
-                    // Cuando el carácter ASCII no es imprimible, escribe un punto (.) en su lugar
-                    unsigned char c = (unsigned char)valor;
-                    printf("%c ", (c >= 32 && c <= 126) ? c : '.');
-                }
-                if (eax & 0x01) { // Decimal
-                    printf("%d ", valor);
-                }
-
-                printf("\n");
-                dir_fisica += tamanio;
+            // Modos de lectura según los bits de EAX
+            if (eax & 0x01) {        // Decimal
+                scanf("%u", &valor);
+            } else if (eax & 0x02) { // Carácter
+                char c;
+                scanf(" %c", &c);
+                valor = (uint32_t)c;
+            } else if (eax & 0x08) { // Hexadecimal
+                scanf("%x", &valor);
+            } else if (eax & 0x04) { // Octal
+                scanf("%o", &valor);
             }
+
+            // Guardado byte por byte (Big Endian)
+            for (int b = tamanio - 1; b >= 0; b--) {
+                mv->mem.ram[dir_fisica + b] = valor & 0xFF;
+                valor >>= 8;
+            }
+                dir_logica_actual += tamanio;
         }
     } 
-    else { 
-        printf("Error en la direccion de memoria\n");
-        mv->regs.vec[0] = 0xFFFFFFFF; // Aborta la VM
-        return;
+        // --- WRITE (SYS 2) ---
+    else if (op == 2) { 
+        for (int i = 0; i < cant_valores; i++) {
+
+           if(!Traducir_DL_a_DF(mv, dir_logica_actual, tamanio, 0, &dir_fisica)) {
+            printf("Error: fallo de segmento en la escritura. \n");
+            mv->regs.vec[0] = STOP;
+            return;
+        }
+            printf("[%04X]: ", dir_fisica);
+
+            // Reconstrucción del valor desde la RAM (Big Endian)
+            uint32_t valor = 0;
+            for (int b = 0; b < tamanio; b++) {
+                uint32_t byte_ram = (unsigned char)mv->mem.ram[dir_fisica + b];
+                valor = (valor << 8) | byte_ram; // Mueve los bits hacia arriba y suma el nuevo byte
+            }
+
+            // Salida acumulativa de formatos según banderas activas en EAX
+            if (eax & 0x10) { // Binario
+                printf("0b");
+                int total_bits = tamanio * 8;
+                for (int bit = total_bits - 1; bit >= 0; bit--) {
+                    printf("%u", (valor >> bit) & 1);
+                }
+                printf(" ");
+            }
+            if (eax & 0x08) { // Hexadecimal
+                printf("0x%X ", valor);
+            }
+            if (eax & 0x04) { // Octal
+                printf("0o%o ", valor);
+            }
+            if (eax & 0x02) { // ASCII
+                // Cuando el carácter ASCII no es imprimible, escribe un punto (.) en su lugar
+                unsigned char c = (unsigned char)valor;
+                printf("%c ", (c >= 32 && c <= 126) ? c : '.');
+            }
+            if (eax & 0x01) { // Decimal
+                printf("%d ", valor);
+            }
+
+            printf("\n");
+            dir_logica_actual += tamanio;
+        }
+    } else {
+        printf("Error: Modo de SYS iválido (%u). Se esperaba 1 (READ) o 2 (WRITE). \n");
+        mv->regs.vec[0] = STOP;
     }
 }
 
@@ -487,7 +558,7 @@ void ejecutarCiclo(Maquina_Virtual *mv){
     uint32_t dir_fisica = 0;
 
     //La ejecucion del codigo se repite hasta que IP apunte a (-1) tras ejecutar un STOP
-    while(mv->regs.vec[0] != 0xFFFFFFFF && Traducir_DL_a_DF(mv, mv->regs.vec[0], 1, 1, &dir_fisica)){
+    while(mv->regs.vec[0] != STOP && Traducir_DL_a_DF(mv, mv->regs.vec[0], 1, 1, &dir_fisica)){
             
         uint32_t ip_actual = mv->regs.vec[0];
 
@@ -528,7 +599,7 @@ void ejecutarCiclo(Maquina_Virtual *mv){
         //Lectura operando b
         for(i=0 ; i < bytes_b ; i++){
             if(!Traducir_DL_a_DF(mv, cursor_logico, 1, 1, &dir_fisica)){
-                mv->regs.vec[0] = 0xFFFFFFFF; //Simulamos un IP = STOP para detener el ciclo de lectura
+                mv->regs.vec[0] = STOP; //Simulamos un IP = STOP para detener el ciclo de lectura
                 return;
             }else{
                 datoB = (datoB << 8) | mv->mem.ram[dir_fisica];

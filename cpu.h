@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include "mv.h"
+#include "mv_const.h"
 
 // Definición del tipo de puntero a función para la Jump Table de instrucciones
 typedef void (*InstruccionFunc)(Maquina_Virtual *mv);
