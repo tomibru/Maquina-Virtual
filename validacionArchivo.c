@@ -34,13 +34,13 @@ int validacion_arch (char *ruta_archivo, Maquina_Virtual *mv) {
                 uint16_t tamCodigo;
 
                 //Validamos que se pueda leer correctamente
-                if (fread(&tamCodigo, sizeof(uint16_t), 1, arch != 1))
+                if (fread(&tamCodigo, sizeof(uint16_t), 1, arch) != 1)
                     printf("Error: Archivo inválido. No se pudo leer el tamaño del código.\n");
                 else {
 
                     //Validamos que el códifo no sobrepase el tamaño de la memoria de la máquian virtual.
                     if (tamCodigo > TAM_MEM)
-                        printf("Error: Archivo inválido. Tamaño de código (%u) excede la memoria (%d).\n");
+                        printf("Error: Archivo inválido. Tamaño de código (%u) excede la memoria (%d).\n", tamCodigo, TAM_MEMORIA);
                     else {
                         
                         uint8_t bufferCodigo[TAM_MEM];

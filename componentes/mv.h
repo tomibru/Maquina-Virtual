@@ -1,3 +1,6 @@
+#ifndef MV_H
+#define MV_H
+
 #include "memoria.h"
 #include "registros.h"
 #include "tablaS.h"
@@ -10,3 +13,4 @@ typedef struct{
 
 void inicializarMV(Maquina_Virtual *mv);
 
+#endif

@@ -1,4 +1,5 @@
 #include "cpu.h"
+#include "mmu.h"
 
 typedef void (*InstruccionFunc)(Maquina_Virtual *mv);
 
@@ -474,7 +475,7 @@ void ejecutar_SYS(Maquina_Virtual *mv) {
             dir_logica_actual += tamanio;
         }
     } else {
-        printf("Error: Modo de SYS iválido (%u). Se esperaba 1 (READ) o 2 (WRITE). \n");
+        printf("Error: Modo de SYS iválido (%u). Se esperaba 1 (READ) o 2 (WRITE). \n", op);
         mv->regs.vec[0] = STOP;
     }
 }

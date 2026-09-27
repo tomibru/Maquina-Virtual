@@ -1,3 +1,7 @@
+#ifndef REGISTROS_H
+#define REGISTROS_H
+
+
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -40,3 +44,5 @@ typedef struct {
 } Registros;
 
 void inicializar_regitros(Registros *r);
+
+#endif

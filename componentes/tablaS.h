@@ -1,3 +1,6 @@
+#ifndef TABLAS_H
+#define TABLAS_H
+
 #include <stdlib.h>
 #include <stdio.h>
 #include "mv_const.h"
@@ -13,3 +16,5 @@ typedef struct {
 }Tabla_Segmentos;
 
 void inicializar_tabla(Tabla_Segmentos *ts);
+
+#endif

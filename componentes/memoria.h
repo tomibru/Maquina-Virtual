@@ -1,3 +1,6 @@
+#ifndef MEMORIA_H
+#define MEMORIA_H
+
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -10,3 +13,4 @@ typedef struct {
 
 void inicializar_memoria(Memoria *m);
 
+#endif

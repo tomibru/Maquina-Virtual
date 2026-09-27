@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include "mv.h"             // Maquina_Virtual
 #include "validacionArchivo.h" // validacion_arch
 #include "cpu.h"            // ejecutarCiclo

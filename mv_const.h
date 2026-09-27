@@ -1,3 +1,6 @@
+#ifndef MV_CONST_H
+#define MV_CONST_H
+
 #define MASCARA_16_BITS   0xFFFF
 #define BITS_SEGMENTO     16
 #define CANT_SEGMENTOS    8
@@ -5,4 +8,6 @@
 #define TAM_MEMORIA       16384
 
 // CPU.C
-#define STOP 0xFFFFFFFF
+#define STOP 0xFFFFFFFFu
+
+#endif
