@@ -30,13 +30,20 @@ int validacion_arch (char *ruta_archivo, Maquina_Virtual *mv) {
                 printf("Error: Archivo inválido. Versión incorrecta.\n");
             else {
 
-                //Leemos el tamaño del código
+                //Leemos el tamaño del código (2 bytes, formato big-endian:
+                //el primer byte leido es el mas significativo, igual que el
+                //resto de los campos multi-byte del formato .vmx). No usamos
+                //un fread directo a uint16_t porque eso interpretaria los
+                //bytes en el orden nativo de la maquina (little-endian en
+                //x86/Windows), invirtiendo el valor real.
+                uint8_t bytesTamCodigo[2];
                 uint16_t tamCodigo;
 
-                //Validamos que se pueda leer correctamente
-                if (fread(&tamCodigo, sizeof(uint16_t), 1, arch) != 1)
+                //Validamos que se puedan leer los 2 bytes correctamente
+                if (fread(bytesTamCodigo, sizeof(uint8_t), 2, arch) != 2)
                     printf("Error: Archivo inválido. No se pudo leer el tamaño del código.\n");
                 else {
+                    tamCodigo = ((uint16_t)bytesTamCodigo[0] << 8) | bytesTamCodigo[1];
 
                     //Validamos que el códifo no sobrepase el tamaño de la memoria de la máquian virtual.
                     if (tamCodigo > TAM_MEM)
@@ -49,11 +56,9 @@ int validacion_arch (char *ruta_archivo, Maquina_Virtual *mv) {
                         //Leemos todo el codigo y lo volcamos el buffer
                         if (tamCodigo > 0) 
                             leidos = fread(bufferCodigo, sizeof(uint8_t), tamCodigo, arch);
-                        
                         if (leidos != tamCodigo)
                             printf("Error: Archivo truncado. No se puede leer todo el código.\n");
                         else {
-
                         inicializarMV(mv);
 
                             /*

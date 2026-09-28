@@ -4,8 +4,11 @@
 #include "validacionArchivo.h" // validacion_arch
 #include "cpu.h"            // ejecutarCiclo
 #include "disassembler.h"   // mostrar_disassembler
+#include <time.h>
 
 int main(int argc, char *argv[]) {
+    //Inicializar semilla para uso de RND
+    srand(time(NULL));
     if (argc < 2) {
         printf("Uso: %s filename.vmx [-d]\n", argv[0]);
         return 1;
