@@ -14,28 +14,28 @@
 #define STOP 0xFFFFFFFFu
 
 // Códigos de registro
-#define REG_IP   0
-#define REG_OPC  1
-#define REG_OP1  2
-#define REG_OP2  3
-#define REG_LAR  4
-#define REG_MAR  5
-#define REG_MBR  6
-#define REG_SP   7
-#define REG_BP   8
-#define REG_EAX  10
-#define REG_EBX  11
-#define REG_ECX  12
-#define REG_EDX  13
-#define REG_EEX  14
-#define REG_EFX  15
-#define REG_AC   16
-#define REG_CC   17
-#define REG_CS   26
-#define REG_DS   27
-#define REG_ES   28
-#define REG_SS   29
-#define REG_KS   30
-#define REG_PS   31
+#define IP   0
+#define OPC  1
+#define OP1  2
+#define OP2  3
+#define LAR  4
+#define MAR  5
+#define MBR  6
+#define SP   7
+#define BP   8
+#define EAX  10
+#define EBX  11
+#define ECX  12
+#define EDX  13
+#define EEX  14
+#define EFX  15
+#define AC   16
+#define CC   17
+#define CS   26
+#define DS   27
+#define ES   28
+#define SS   29
+#define KS   30
+#define PS   31
 
 #endif
