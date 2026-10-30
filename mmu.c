@@ -4,7 +4,7 @@
 //FLUJO DE LA MMU (Memory Managment Unit)
 //Filtro de seguridad de la CPU para interactura con la Memoria RAM
 
-int Traducir_DL_a_DF(Maquina_Virtual *mv, uint32_t dir_logica, uint16_t cant_bytes, int Codesegment, uint32_t *dir_fisica_calculada) {
+int Traducir_DL_a_DF(Maquina_Virtual *mv, uint32_t dir_logica, uint16_t cant_bytes, int es_fetch, uint32_t *dir_fisica_calculada) {
     
     //Descomposicion de la direccion logica(IR)
     uint16_t segmento = (dir_logica >> 16) & MASCARA_16_BITS;
@@ -27,7 +27,7 @@ int Traducir_DL_a_DF(Maquina_Virtual *mv, uint32_t dir_logica, uint16_t cant_byt
             if((uint32_t)desplazamiento + cant_bytes > (uint32_t)mv->ts.vec[segmento].tamanio) {
                 //Solo muestra mensaje de error si es acceso a los datos.
                 //Si es lectura de instruccion(codesegment=1), no imprime error y devuelve 0 para terminar el bucle
-                if(!Codesegment)     
+                if(!es_fetch)     
                     printf("Error: Fallo del segmento, acceso fuera de los limites en segmento %u\n",segmento);
             }
             else{
@@ -35,7 +35,7 @@ int Traducir_DL_a_DF(Maquina_Virtual *mv, uint32_t dir_logica, uint16_t cant_byt
                 uint32_t dir_fisica = (uint32_t)mv->ts.vec[segmento].base + desplazamiento;
 
                 //Registro de estado, si estamos en DataSegment (Actualizamos LAR y MAR)
-                if(!Codesegment){
+                if(!es_fetch){
                     mv->regs.vec[4]= dir_logica; //LAR
                     mv->regs.vec[5]= ((uint32_t)cant_bytes << 16) | (dir_fisica & MASCARA_16_BITS); //MAR parte alta: cantidad de bytes que se quieren acceder, parte baja: direccion fisica
                 }
