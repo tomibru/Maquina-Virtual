@@ -44,6 +44,6 @@ typedef struct {
     int32_t vec[NUM_REGS];
 } Registros;
 
-void inicializar_regitros(Registros *r);
+void inicializar_registros(Registros *r);
 
 #endif

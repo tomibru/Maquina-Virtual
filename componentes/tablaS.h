@@ -8,8 +8,8 @@
 
 typedef struct {
     // La base y el tamaño ocupan 2 bytes cada uno
-    int16_t base;
-    int16_t tamanio;
+    uint16_t base;
+    uint16_t tamanio;
 } Segmento;
 
 typedef struct {
