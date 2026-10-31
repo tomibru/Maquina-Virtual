@@ -40,7 +40,7 @@ int apilar(Maquina_Virtual *mv, uint32_t valor) {
     return reservar_pila(mv) && escribir_tope_pila(mv, valor);
 }
 
-int leer_tope_pila(Maquina_Virtual *mv, unit32_t *valor) {
+int leer_tope_pila(Maquina_Virtual *mv, uint32_t *valor) {
     int ok = 0;
     uint32_t dir_fisica;
     uint32_t sp = (uint32_t)mv->regs.vec[SP];

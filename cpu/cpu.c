@@ -1,6 +1,7 @@
 #include "cpu.h"
 #include "mmu.h"
 #include "pila.h"
+#include "imagen.h"
 #include <stdlib.h>
 
 typedef void (*InstruccionFunc)(Maquina_Virtual *mv);
@@ -533,6 +534,10 @@ void ejecutar_SYS(Maquina_Virtual *mv) {
             system("clear");
         #endif
     }
+
+    else if (op == 0xF)
+        ejecutar_breakpoint(mv); // se ignora si no hay .vmi
+    
     else {
         printf("Error: Modo de SYS iválido (%u). Se esperaba 1 (READ) o 2 (WRITE). \n", op);
         mv->regs.vec[0] = STOP;
@@ -705,6 +710,8 @@ void ejecutarCiclo(Maquina_Virtual *mv){
     while(ip_en_codigo(mv) && Traducir_DL_a_DF(mv, mv->regs.vec[0], 1, 1, &dir_fisica)){
             
         uint32_t ip_actual = mv->regs.vec[0];
+        int paso_antes = mv->paso_a_paso; // ¿veniamos en modo paso a paso?
+        mv->bp_hecho = 0;
 
         //1- Leer primer byte de la instruccion en la memoria
         uint8_t primer_byte = mv->mem.ram[dir_fisica];
@@ -767,8 +774,12 @@ void ejecutarCiclo(Maquina_Virtual *mv){
         mv->regs.vec[2] = (tipoA << 24) | (datoA & 0x00FFFFFF) ;//OP1 (Byte mas significativo el tipo de operando y los 3 restantes el dato)
         mv->regs.vec[3] = (tipoB << 24) | (datoB & 0x00FFFFFF) ;//OP2 (Byte mas significativo el tipo de operando y los 3 restantes el dato)
         
-        if (opc < 32 && tabla_opc[opc] != NULL) {
+       if (opc < 32 && tabla_opc[opc] != NULL) {
             tabla_opc[opc](mv); // Ejecuta directamente la función mapeada en la tabla
+
+            // Paso a paso: tras cada instruccion (que no haya sido ella misma un breakpoint) se vuelve a pausar
+            if (paso_antes && !mv->bp_hecho && !abortado(mv))
+                ejecutar_breakpoint(mv);
         } else {
             printf("Error: Instruccion invalida (Opcode %02X desconocida).\n", opc);
             mv->regs.vec[0] = 0xFFFFFFFF; // Aborta la VM por instrucción inválida

@@ -21,7 +21,10 @@ SRCS := main.c \
         componentes/mv.c \
         componentes/memoria.c \
         componentes/registros.c \
-        componentes/tablaS.c
+        componentes/tablaS.c \
+        args.c \
+        pila.c \
+        imagen.c \
 
 OBJS := $(SRCS:.c=.o)
 

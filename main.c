@@ -1,33 +1,45 @@
 #include <stdio.h>
 #include <string.h>
-#include "mv.h"             // Maquina_Virtual
-#include "validacionArchivo.h" // validacion_arch
-#include "cpu.h"            // ejecutarCiclo
-#include "disassembler.h"   // mostrar_disassembler
+#include <stdlib.h>
 #include <time.h>
+#include "mv.h"               // Maquina_Virtual
+#include "args.h"             // parsear_argumentos
+#include "validacionArchivo.h" // validacion_arch (carga un .vmx)
+#include "imagen.h"           // cargar_imagen
+#include "cpu.h"              // ejecutarCiclo
+#include "disassembler.h"     // desensamblarCiclo
 
 int main(int argc, char *argv[]) {
     //Inicializar semilla para uso de RND
     srand(time(NULL));
-    if (argc < 2) {
-        printf("Uso: %s filename.vmx [-d]\n", argv[0]);
-        return 1;
-    }
 
-    int mostrar_desensamblado = 0;
-    for (int i = 2; i < argc; i++) {
-        if (strcmp(argv[i], "-d") == 0)
-            mostrar_desensamblado = 1;
-    }
+    Configuracion cfg;
+    if (!parsear_argumentos(argc, argv, &cfg))
+        return 1; // el error ya se imprimio adentro
 
     Maquina_Virtual mv;
-    if (!validacion_arch(argv[1], &mv))
-        return 1; // el error ya se imprimio adentro de validacion_arch
+    int cargada;
 
-    if (mostrar_desensamblado)
+    if (cfg.ruta_vmx != NULL)
+        cargada = validacion_arch(&cfg, &mv);       // 1) hay .vmx: se arranca un proceso nuevo
+    else
+        cargada = cargar_imagen(cfg.ruta_vmi, &mv); // 2) solo .vmi: se retoma la ejecucion
+
+    if (!cargada)
+        return 1; // el error ya se imprimio adentro
+
+    // Si hay .vmi, los breakpoints (SYS F) van a guardar la imagen ahi
+    if (cfg.ruta_vmi != NULL) {
+        mv.tiene_vmi = 1;
+        strncpy(mv.ruta_vmi, cfg.ruta_vmi, RUTA_MAX - 1);
+        mv.ruta_vmi[RUTA_MAX - 1] = '\0';
+    }
+
+    if (cfg.desensamblar)
         desensamblarCiclo(&mv);
     else
         ejecutarCiclo(&mv);
 
+    liberarMV(&mv);
     return 0;
 }
