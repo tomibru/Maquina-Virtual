@@ -18,6 +18,9 @@ void ejecutarCiclo(Maquina_Virtual *mv);
 uint32_t obtener_valor_operando(Maquina_Virtual *mv, uint32_t reg_op);
 void guardar_valor_operando(Maquina_Virtual *mv, uint32_t reg_op, uint32_t resultado);
 void modificar_flags_CC(Maquina_Virtual *mv, uint32_t resultado, uint8_t c, uint8_t v);
+int bytes_modificador(uint8_t cod);
+int resolver_operando_memoria(Maquina_Virtual *mv, uint32_t valor, int *cant_bytes, uint32_t *dir_fisica);
+int ip_en_codigo(Maquina_Virtual *mv);
 
 // Declaraciones de las funciones de ejecución de instrucciones (0x00 a 0x1F)
 void ejecutar_SYS(Maquina_Virtual *mv);

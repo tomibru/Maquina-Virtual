@@ -6,7 +6,7 @@
 #include "mv_const.h"
 
 // 1 si 'texto' termina con 'ext' (ignora mayusculas/minusculas)
-static int termina_con(const char *texto, const char *ext) {
+static int termina_con(char *texto, char *ext) {
     size_t lt = strlen(texto), le = strlen(ext);
     int ok = 0;
     if (lt >= le) {

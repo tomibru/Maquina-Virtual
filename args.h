@@ -4,8 +4,8 @@
 #include <stdint.h>
 
 typedef struct {
-    const char *ruta_vmx;   // NULL si no se indico .vmx
-    const char *ruta_vmi;   // NULL si no se indico .vmi
+    char *ruta_vmx;   // NULL si no se indico .vmx
+    char *ruta_vmi;   // NULL si no se indico .vmi
     uint32_t    mem_kib;    // valor de m=M (o el default)
     int         desensamblar;   // flag -d
     int         cant_params;    // cantidad de parametros luego de -p
