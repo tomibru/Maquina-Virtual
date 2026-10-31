@@ -1,5 +1,6 @@
 #include "cpu.h"
 #include "mmu.h"
+#include "pila.h"
 
 typedef void (*InstruccionFunc)(Maquina_Virtual *mv);
 
@@ -18,6 +19,10 @@ InstruccionFunc tabla_opc[32]={
     [0x08] = ejecutar_JNN,   // Salto si es Positivo o Cero (>= 0)
     [0x09] = ejecutar_JNZ,   // Salto si no es Cero (!= 0)
     [0x0A] = ejecutar_NOT,   // Negación bit a bit
+    [0x0B] = ejecutar_PUSH,  // Apila 4 bytes
+    [0x0C] = ejecutar_POP,   // Desapila 4 bytes
+    [0x0D] = ejecutar_CALL,  // Llamada a subrutina
+    [0x0E] = ejecutar_RET,   // Retorno de subrutina (0 operandos)
 
     // Dos operandos - Operaciones aritméticas, lógicas y especiales
     [0x10] = ejecutar_MOV,   // Asignación / Copia
@@ -593,6 +598,43 @@ void guardar_valor_operando(Maquina_Virtual *mv, uint32_t reg_op, uint32_t resul
                 resultado = resultado>> 8;
             }
         }
+}
+
+// ---------------- Manejo de pila ----------------
+
+void ejecutar_PUSH(Maquina_Virtual *mv) {
+    // Respeta el orden del enunciado: primero SP-4 y control de overflow...
+    if (reservar_pila(mv)) {
+        // ...recien despues se obtiene el operando (ya extendido a 4 bytes con signo)
+        uint32_t valor = obtener_valor_operando(mv, mv->regs.vec[REG_OP1]);
+        if (mv->regs.vec[REG_IP] != (int32_t)STOP) // el operando pudo fallar y abortar
+            escribir_tope_pila(mv, valor);
+    }
+}
+
+void ejecutar_POP(Maquina_Virtual *mv) {
+    uint32_t valor;
+    if (leer_tope_pila(mv, &valor)) {
+        guardar_valor_operando(mv, mv->regs.vec[REG_OP1], valor); // se truncan los bytes de mas
+        mv->regs.vec[REG_SP] += 4;                                // el SP se incrementa al final
+    }
+}
+
+void ejecutar_CALL(Maquina_Virtual *mv) {
+    // CALL x  ==  PUSH IP  +  JMP x   (el IP ya apunta a la instruccion siguiente)
+    if (apilar(mv, (uint32_t)mv->regs.vec[REG_IP])) {
+        uint32_t offset = obtener_valor_operando(mv, mv->regs.vec[REG_OP1]);
+        mv->regs.vec[REG_IP] = (mv->regs.vec[REG_IP] & 0xFFFF0000) | (offset & 0x0000FFFF);
+    }
+}
+
+void ejecutar_RET(Maquina_Virtual *mv) {
+    // RET  ==  POP IP
+    uint32_t valor;
+    if (leer_tope_pila(mv, &valor)) {
+        mv->regs.vec[REG_IP] = (int32_t)valor;
+        mv->regs.vec[REG_SP] += 4;
+    }
 }
 
 // 1 si el IP apunta dentro del Code Segment (misma entrada de tabla que CS)

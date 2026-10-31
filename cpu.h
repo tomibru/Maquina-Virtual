@@ -31,8 +31,11 @@ void ejecutar_JNP(Maquina_Virtual *mv);
 void ejecutar_JNN(Maquina_Virtual *mv);
 void ejecutar_JNZ(Maquina_Virtual *mv);
 void ejecutar_NOT(Maquina_Virtual *mv);
+void ejecutar_PUSH(Maquina_Virtual *mv);
+void ejecutar_POP(Maquina_Virtual *mv);
+void ejecutar_CALL(Maquina_Virtual *mv);
+void ejecutar_RET(Maquina_Virtual *mv);
 void ejecutar_STOP(Maquina_Virtual *mv);
-
 void ejecutar_MOV(Maquina_Virtual *mv);
 void ejecutar_ADD(Maquina_Virtual *mv);
 void ejecutar_SUB(Maquina_Virtual *mv);
