@@ -14,5 +14,6 @@ typedef struct {
 } Memoria;
 
 int inicializar_memoria(Memoria *m, uint32_t tam_bytes);
+void liberar_memoria(Memoria *m);
 
 #endif

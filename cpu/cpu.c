@@ -697,7 +697,7 @@ void ejecutar_RET(Maquina_Virtual *mv) {
 }
 
 // 1 si el IP apunta dentro del Code Segment (misma entrada de tabla que CS)
-static int ip_en_codigo(const Maquina_Virtual *mv) {
+int ip_en_codigo(const Maquina_Virtual *mv) {
     uint32_t ip = (uint32_t)mv->regs.vec[IP];
     uint32_t cs = (uint32_t)mv->regs.vec[CS];
     return ip != STOP && cs != 0xFFFFFFFFu && (ip >> 16) == (cs >> 16);
@@ -778,7 +778,7 @@ void ejecutarCiclo(Maquina_Virtual *mv){
             tabla_opc[opc](mv); // Ejecuta directamente la función mapeada en la tabla
 
             // Paso a paso: tras cada instruccion (que no haya sido ella misma un breakpoint) se vuelve a pausar
-            if (paso_antes && !mv->bp_hecho && !abortado(mv))
+            if (paso_antes && !mv->bp_hecho && mv->regs.vec[IP] != (int32_t)STOP)
                 ejecutar_breakpoint(mv);
         } else {
             printf("Error: Instruccion invalida (Opcode %02X desconocida).\n", opc);

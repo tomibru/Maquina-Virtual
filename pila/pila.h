@@ -1,4 +1,4 @@
-#ifndef PILA.H
+#ifndef PILA_H
 #define PILA_H
 
 #include <stdint.h>
@@ -17,6 +17,6 @@ int escribir_tope_pila(Maquina_Virtual *mv, uint32_t valor);
 int apilar(Maquina_Virtual *mv, uint32_t valor);
 
 // POP. Pasos 1 a 3: lee 4 bytes del tope SIN MOVER SP y controla underflow
-int leer_tope_pila(Maquina_Virtual *mv, unit32_t *valor);
+int leer_tope_pila(Maquina_Virtual *mv, uint32_t *valor);
  
-#endif PILA.H
+#endif 

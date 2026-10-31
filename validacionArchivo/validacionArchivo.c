@@ -89,9 +89,12 @@ int leerCabecera(FILE *arch, uint8_t *version, uint32_t tam[], uint32_t *entry) 
         return 0;
     }
     else {
-        fread(version, 1, 1, arch);
+        if(fread(version, 1, 1, arch) !=1) {
+            printf("Error: Archivo invalido. Falta el numero de version.\n");
+            return 0;
+        }
         // Solo se aceptan las versiones 1 y 2
-        if (*version != 1 || *version != 2) {
+         else if (*version != 1 && *version != 2) {
             printf("Error: Archvio invalido. Version incorrecta");
             return 0;
         }
@@ -137,7 +140,10 @@ int verificarEspacio(uint32_t tam[], uint32_t memBytes, uint32_t entry) {
 
     if(entry >= tam[S_CS]) {
         printf("Error Archivo invalido. El entry point (%u) cae fuera del Code Segment", entry);
+        return 0;
     }
+
+    return 1;
 }
 
 // 3er Paso: ubicar los segmentos uno a continuacion del otro, arma la tabla y carga los registros de segmento
@@ -169,7 +175,7 @@ void ubicarSegmentos(Maquina_Virtual *mv, uint32_t tam[], uint32_t base[]) {
 int cargarContenido(FILE *arch, Maquina_Virtual *mv, uint32_t tam[], uint32_t base[]) {
     if (fread(&mv->mem.ram[base[S_CS]], 1, tam[S_CS], arch) != tam[S_CS])
         return 0;
-    if (tam[S_KS] > 0 && fread(&mv->mem.ram[base[S_KS]], 1, tam[S_KS], arch))
+    if (tam[S_KS] > 0 && fread(&mv->mem.ram[base[S_KS]], 1, tam[S_KS], arch) != tam[S_KS])
         return 0;
     return 1;
 }
@@ -177,14 +183,16 @@ int cargarContenido(FILE *arch, Maquina_Virtual *mv, uint32_t tam[], uint32_t ba
 // 5to Paso: IP apunta al entry point
 // SP apunta justo despues del final de la pila
 void inicializarIPySP(Maquina_Virtual *mv, uint32_t tam[], uint32_t entry) {
-    int32_t cs = mv->regs.vec[obtener_registro_segmento(S_CS)];
-    int32_t ss = mv->regs.vec[obtener_registro_segmento(S_SS)];
+    uint32_t cs = (uint32_t)mv->regs.vec[CS];
+    uint32_t ss = (uint32_t)mv->regs.vec[SS];
 
-    mv->regs.vec[IP] = cs | entry;
-    if(tam[S_SS] > 0)
-        mv->regs.vec[SS] = ss + tam[S_SS];
+    mv->regs.vec[IP] = (int32_t)(cs | entry);
+
+    // SS conserva la base del segmento; SP apunta al final exclusivo de la pila.
+    if (tam[S_SS] > 0 && ss != STOP)
+        mv->regs.vec[SP] = (int32_t)(ss + tam[S_SS]);
     else
-        mv->regs.vec[SS] + 0xFFFFFFFF;
+        mv->regs.vec[SP] = (int32_t)STOP;
 }
 
 // 6to Paso: escribir el Param Segment
@@ -238,6 +246,12 @@ int cargarProceso(FILE *arch, Configuracion *cfg, Maquina_Virtual *mv) {
         if (tam[S_DS] > 0xFFFF)
             tam[S_DS] = 0xFFFF;
     }
+
+    if (version == 2 && tam[S_SS] == 0) {
+    printf("Error: Archivo invalido. El Stack Segment esta vacio.\n");
+    return 0;
+    }
+    
     tam[S_PS] = calcularTamPS(cfg);
 
     // 2. ¿Entra todo?
@@ -269,7 +283,7 @@ int cargarProceso(FILE *arch, Configuracion *cfg, Maquina_Virtual *mv) {
 
         if (tam[S_PS] > 0) {
             argc = cfg->cant_params + 1;
-            argv = cargarParamSegment(cfg, mv, base[S_PS]); // el PS es la entrada 0: el puntero es solo el offset
+            argv = cargarPS(cfg, mv, base[S_PS]); // el PS es la entrada 0: el puntero es solo el offset
         }
         if (!cargarPilaInicial(mv, argc, argv)) {
             liberarMV(mv);

@@ -146,7 +146,7 @@ int cargarImagen (char *ruta, Maquina_Virtual *mv) {
 }
 
 // ---- Breakpoint (SYS F) ----
-void ejecutar_breakpoint(Maquina_Virtual *mv) {
+void ejecutarBreakpoint(Maquina_Virtual *mv) {
     int tecla;
     int resto;
 
