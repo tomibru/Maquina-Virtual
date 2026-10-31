@@ -481,6 +481,35 @@ void ejecutar_SYS(Maquina_Virtual *mv) {
 }
 
 
+// Cantidad de bytes que indica el modificador (3 bits) de un operando de memoria.
+// 001 = byte, 010 = word, 100 = long. 000 = programa de la parte I (sin modificador): 4 bytes.
+// Devuelve 0 si el codigo es invalido.
+static int bytes_modificador(uint8_t cod) {
+    int bytes = 0;
+    if (cod == 0 || cod == 4) bytes = 4;
+    else if (cod == 1)        bytes = 1;
+    else if (cod == 2)        bytes = 2;
+    return bytes;
+}
+
+// Para un operando de memoria calcula cuantos bytes se acceden y a que direccion fisica.
+// Devuelve 0 (con mensaje) si el modificador es invalido o hay fallo de segmento.
+static int resolver_operando_memoria(Maquina_Virtual *mv, uint32_t valor, int *cant_bytes, uint32_t *dir_fisica) {
+    int ok = 0;
+    uint8_t cod_reg = valor & 0x1F;
+    int16_t offset  = (int16_t)(valor >> 8); // conserva el signo
+    *cant_bytes = bytes_modificador((valor >> 5) & 0x07);
+
+    if (*cant_bytes == 0)
+        printf("Error: modificador de memoria invalido.\n");
+    else {
+        // Si no tiene registro (codigo 0) se usa el DS por defecto
+        uint32_t reg_base = (cod_reg == 0) ? mv->regs.vec[DS] : mv->regs.vec[cod_reg];
+        ok = Traducir_DL_a_DF(mv, reg_base + offset, *cant_bytes, 0, dir_fisica);
+    }
+    return ok;
+}
+
 uint32_t obtener_valor_operando(Maquina_Virtual *mv, uint32_t reg_op){
     uint8_t tipo = (reg_op >> 24) & 0xFF;
     uint32_t valor = reg_op & 0x00FFFFFF;
@@ -489,8 +518,15 @@ uint32_t obtener_valor_operando(Maquina_Virtual *mv, uint32_t reg_op){
         case 0: //Ninguno
             return 0;
         
-        case 1: //Registro
-            return mv->regs.vec[valor & 0x1F];
+        case 1: { //Registro, con sector: 00 = 4 bytes, 01 = AL, 10 = AH, 11 = AX
+            uint32_t r = mv->regs.vec[valor & 0x1F];
+            switch ((valor >> 5) & 0x03) {
+                case 1:  return (uint32_t)(int32_t)(int8_t)(r & 0xFF);         // 4to byte, con signo
+                case 2:  return (uint32_t)(int32_t)(int8_t)((r >> 8) & 0xFF);  // 3er byte, con signo
+                case 3:  return (uint32_t)(int32_t)(int16_t)(r & 0xFFFF);      // 2 bytes, con signo
+                default: return r;
+            }
+        }
 
         case 2:
             if(valor & 0x8000)//Negativo
@@ -498,22 +534,22 @@ uint32_t obtener_valor_operando(Maquina_Virtual *mv, uint32_t reg_op){
             else
                 return valor;
 
-        case 3: { //Memoria, direccion logica relativa al DS
-            uint8_t cod_reg = valor & 0x1F;
-            int16_t offset = (int16_t)(valor >> 8); // Conserva el bit de signo
-            //Si no tiene registro se usa el DS por defecto
-            uint32_t reg_base = (cod_reg == 0) ? mv->regs.vec[27]:  mv->regs.vec[cod_reg];
-            uint32_t dir_logica = reg_base + offset;
+        case 3: { //Memoria
+            int cant = 0;
             uint32_t dir_fisica = 0;
-            
-            if(! Traducir_DL_a_DF(mv, dir_logica, 4, 0,&dir_fisica)){
+
+            if(!resolver_operando_memoria(mv, valor, &cant, &dir_fisica)){
                 mv->regs.vec[0] = 0xFFFFFFFF; // Abortar si hay fallo de segmento
                 return 0;
             }
-            //Leo los 4 bytes
+            //Leo 'cant' bytes (big endian)
             uint32_t res = 0;
-            for(int i=0; i<4 ;i++)
+            for(int i=0; i<cant ;i++)
                 res = (res << 8) | mv->mem.ram[dir_fisica + i];
+
+            //Extension de signo: byte y word se completan a 4 bytes propagando el signo
+            if(cant == 1) res = (uint32_t)(int32_t)(int8_t)res;
+            if(cant == 2) res = (uint32_t)(int32_t)(int16_t)res;
 
             //Actualizo MBR con el valor leido
             mv->regs.vec[6] = res;
@@ -525,41 +561,52 @@ uint32_t obtener_valor_operando(Maquina_Virtual *mv, uint32_t reg_op){
 }
 
 void guardar_valor_operando(Maquina_Virtual *mv, uint32_t reg_op, uint32_t resultado){
-            uint8_t tipo = (reg_op >> 24) & 0xFF;
-            uint32_t valor = reg_op & 0x00FFFFFF;
-            
-            if(tipo == 1)
-                mv->regs.vec[ valor & 0x1F ] = resultado;
-            else
-                if(tipo == 3){
-                    uint8_t cod_reg = valor & 0x1F;
-                    int16_t offset = (int16_t)(valor >> 8); // Convertido a int16_t
+    uint8_t tipo = (reg_op >> 24) & 0xFF;
+    uint32_t valor = reg_op & 0x00FFFFFF;
 
-                    uint32_t reg_base = (cod_reg == 0) ? mv->regs.vec[27] : mv->regs.vec[cod_reg];
-                    uint32_t dir_logica = reg_base + offset;
-                    uint32_t dir_fisica = 0;
-                    
-                    if(! Traducir_DL_a_DF(mv, dir_logica, 4, 0,&dir_fisica)){
-                        mv->regs.vec[0] = 0xFFFFFFFF; // Abortar si hay fallo de segmento
-                        return;
-                    }
+    if(tipo == 1){
+        uint8_t cod = valor & 0x1F;
+        uint32_t r = mv->regs.vec[cod];
+        switch ((valor >> 5) & 0x03) {
+            case 1:  r = (r & 0xFFFFFF00) | (resultado & 0xFF);              break; // AL
+            case 2:  r = (r & 0xFFFF00FF) | ((resultado & 0xFF) << 8);       break; // AH
+            case 3:  r = (r & 0xFFFF0000) | (resultado & 0xFFFF);            break; // AX
+            default: r = resultado;                                          break; // registro completo
+        }
+        mv->regs.vec[cod] = r;
+    }
+    else
+        if(tipo == 3){
+            int cant = 0;
+            uint32_t dir_fisica = 0;
 
-                    //Actualizo MBR
-                    mv->regs.vec[6] = resultado;
-                    for(int i = 3; i>=0 ; i--){
-                        mv->mem.ram[dir_fisica+ i] = resultado & 0xFF;
-                        resultado = resultado>> 8;
-                    }
-                    
-                }
+            if(!resolver_operando_memoria(mv, valor, &cant, &dir_fisica)){
+                mv->regs.vec[0] = 0xFFFFFFFF; // Abortar si hay fallo de segmento
+                return;
+            }
+
+            //Actualizo MBR
+            mv->regs.vec[6] = resultado;
+            //Se truncan los bytes mas significativos: solo se guardan 'cant' bytes
+            for(int i = cant - 1; i>=0 ; i--){
+                mv->mem.ram[dir_fisica+ i] = resultado & 0xFF;
+                resultado = resultado>> 8;
+            }
+        }
 }
-   
+
+// 1 si el IP apunta dentro del Code Segment (misma entrada de tabla que CS)
+static int ip_en_codigo(const Maquina_Virtual *mv) {
+    uint32_t ip = (uint32_t)mv->regs.vec[IP];
+    uint32_t cs = (uint32_t)mv->regs.vec[CS];
+    return ip != STOP && cs != 0xFFFFFFFFu && (ip >> 16) == (cs >> 16);
+}
 
 void ejecutarCiclo(Maquina_Virtual *mv){
     uint32_t dir_fisica = 0;
 
     //La ejecucion del codigo se repite hasta que IP apunte a (-1) tras ejecutar un STOP
-    while(mv->regs.vec[0] != STOP && Traducir_DL_a_DF(mv, mv->regs.vec[0], 1, 1, &dir_fisica)){
+    while(ip_en_codigo(mv) && Traducir_DL_a_DF(mv, mv->regs.vec[0], 1, 1, &dir_fisica)){
             
         uint32_t ip_actual = mv->regs.vec[0];
 
@@ -593,7 +640,7 @@ void ejecutarCiclo(Maquina_Virtual *mv){
         uint8_t bytes_b = tipoB;
         
         // 3- Cursor para leer los bytes adicionales de la instrucción (comienza en ip_actual + 1)
-        uint8_t cursor_logico = ip_actual +1;
+        uint32_t cursor_logico = ip_actual +1;
         uint32_t datoA = 0;
         uint32_t datoB = 0;
         int i;
