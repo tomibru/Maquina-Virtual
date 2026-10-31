@@ -1,6 +1,7 @@
 #include "cpu.h"
 #include "mmu.h"
 #include "pila.h"
+#include <stdlib.h>
 
 typedef void (*InstruccionFunc)(Maquina_Virtual *mv);
 
@@ -479,7 +480,60 @@ void ejecutar_SYS(Maquina_Virtual *mv) {
             printf("\n");
             dir_logica_actual += tamanio;
         }
-    } else {
+    } 
+    // --- STRING WRITE (SYS 3) ---
+    else if (op == 3) {
+        uint32_t direccion = (uint32_t)mv->regs.vec[EDX];
+        int32_t maximo = mv->regs.vec[ECX];
+        uint32_t cantGuardados = 0;
+        uint32_t dirFisica;
+        int caracter = getchar();
+
+        while(caracter != '\n' && caracter != EOF) {
+            if (maximo == -1 || cantGuardados < (uint32_t)maximo) {
+                if(!Traducir_DL_a_DF(mv, direccion + cantGuardados, 1, 0, &dirFisica)) {
+                    mv->regs.vec[IP] = STOP;
+                    return;
+                }
+                mv->mem.ram[dirFisica] = (uint8_t)caracter;
+                cantGuardados++;
+            }
+            caracter = getchar();
+        }
+
+        //Se cierra el String con '\0' para poder imprimirlo despues
+        if(!Traducir_DL_a_DF(mv, direccion + cantGuardados, 1, 0, &dirFisica)) {
+            mv->regs.vec[IP] = STOP;
+            return;
+        }
+        mv->mem.ram[dirFisica] = 0;
+    } 
+    // --- STRING WRITE (SYS 4) ---
+    else if (op == 4) {
+        uint32_t direccion = (uint32_t)mv->regs.vec[EDX];
+        uint32_t dirFisica;
+        uint8_t caracter;
+
+        do {
+            if(!Traducir_DL_a_DF(mv, direccion, 1, 0, &dirFisica)) {
+                mv->regs.vec[IP] = STOP;
+                return;
+            }
+            caracter = mv->mem.ram[dirFisica];
+            if(caracter != 0)
+                putchar(caracter);
+            direccion++;
+        } while (caracter != 0);
+    }
+    // --- CLEAR SCREEN (SYS 0) ---
+    else if (op == 0) {
+        #ifdef _WIN32
+            system("cls");
+        #else
+            system("clear");
+        #endif
+    }
+    else {
         printf("Error: Modo de SYS iválido (%u). Se esperaba 1 (READ) o 2 (WRITE). \n", op);
         mv->regs.vec[0] = STOP;
     }
@@ -606,8 +660,8 @@ void ejecutar_PUSH(Maquina_Virtual *mv) {
     // Respeta el orden del enunciado: primero SP-4 y control de overflow...
     if (reservar_pila(mv)) {
         // ...recien despues se obtiene el operando (ya extendido a 4 bytes con signo)
-        uint32_t valor = obtener_valor_operando(mv, mv->regs.vec[REG_OP1]);
-        if (mv->regs.vec[REG_IP] != (int32_t)STOP) // el operando pudo fallar y abortar
+        uint32_t valor = obtener_valor_operando(mv, mv->regs.vec[OP1]);
+        if (mv->regs.vec[IP] != (int32_t)STOP) // el operando pudo fallar y abortar
             escribir_tope_pila(mv, valor);
     }
 }
@@ -615,16 +669,16 @@ void ejecutar_PUSH(Maquina_Virtual *mv) {
 void ejecutar_POP(Maquina_Virtual *mv) {
     uint32_t valor;
     if (leer_tope_pila(mv, &valor)) {
-        guardar_valor_operando(mv, mv->regs.vec[REG_OP1], valor); // se truncan los bytes de mas
-        mv->regs.vec[REG_SP] += 4;                                // el SP se incrementa al final
+        guardar_valor_operando(mv, mv->regs.vec[OP1], valor); // se truncan los bytes de mas
+        mv->regs.vec[SP] += 4;                                // el SP se incrementa al final
     }
 }
 
 void ejecutar_CALL(Maquina_Virtual *mv) {
     // CALL x  ==  PUSH IP  +  JMP x   (el IP ya apunta a la instruccion siguiente)
-    if (apilar(mv, (uint32_t)mv->regs.vec[REG_IP])) {
-        uint32_t offset = obtener_valor_operando(mv, mv->regs.vec[REG_OP1]);
-        mv->regs.vec[REG_IP] = (mv->regs.vec[REG_IP] & 0xFFFF0000) | (offset & 0x0000FFFF);
+    if (apilar(mv, (uint32_t)mv->regs.vec[IP])) {
+        uint32_t offset = obtener_valor_operando(mv, mv->regs.vec[OP1]);
+        mv->regs.vec[IP] = (mv->regs.vec[IP] & 0xFFFF0000) | (offset & 0x0000FFFF);
     }
 }
 
@@ -632,8 +686,8 @@ void ejecutar_RET(Maquina_Virtual *mv) {
     // RET  ==  POP IP
     uint32_t valor;
     if (leer_tope_pila(mv, &valor)) {
-        mv->regs.vec[REG_IP] = (int32_t)valor;
-        mv->regs.vec[REG_SP] += 4;
+        mv->regs.vec[IP] = (int32_t)valor;
+        mv->regs.vec[SP] += 4;
     }
 }
 
