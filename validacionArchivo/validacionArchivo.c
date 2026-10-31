@@ -164,7 +164,7 @@ void ubicarSegmentos(Maquina_Virtual *mv, uint32_t tam[], uint32_t base[]) {
             entradaTabla++;
         }
         else
-            mv->regs.vec[registro = 0xFFFFFFFF]; 
+            mv->regs.vec[registro] = 0xFFFFFFFF; 
             // El segmento no existe = -1
         
         posicion += tam[s];
@@ -293,7 +293,7 @@ int cargarProceso(FILE *arch, Configuracion *cfg, Maquina_Virtual *mv) {
     return 1;
 }
 
-int validacion_arch (const Configuracion *cfg, Maquina_Virtual *mv) {
+int validacion_arch (Configuracion *cfg, Maquina_Virtual *mv) {
     FILE *arch = fopen(cfg->ruta_vmx, "rb");
     int ok;
 

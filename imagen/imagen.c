@@ -42,7 +42,7 @@ int leerArchivo4(FILE *f, uint32_t *destino) {
 }
 
 // Guardar la imagen
-int guardarImagen(Maquina_Virtual *mv) {
+int guardar_imagen(Maquina_Virtual *mv) {
     FILE *arch = fopen(mv->ruta_vmi, "wb");
     uint8_t version = 1;
     int ok;
@@ -83,7 +83,7 @@ int imagenTruncada(FILE *arch, Maquina_Virtual *mv) {
     return 0;
 }
 
-int cargarImagen (char *ruta, Maquina_Virtual *mv) {
+int cargar_imagen (char *ruta, Maquina_Virtual *mv) {
     FILE *arch = fopen(ruta, "rb");
     char id[5];
     uint8_t version;
@@ -146,7 +146,7 @@ int cargarImagen (char *ruta, Maquina_Virtual *mv) {
 }
 
 // ---- Breakpoint (SYS F) ----
-void ejecutarBreakpoint(Maquina_Virtual *mv) {
+void ejecutar_breakpoint(Maquina_Virtual *mv) {
     int tecla;
     int resto;
 

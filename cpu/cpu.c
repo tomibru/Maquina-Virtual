@@ -548,7 +548,7 @@ void ejecutar_SYS(Maquina_Virtual *mv) {
 // Cantidad de bytes que indica el modificador (3 bits) de un operando de memoria.
 // 001 = byte, 010 = word, 100 = long. 000 = programa de la parte I (sin modificador): 4 bytes.
 // Devuelve 0 si el codigo es invalido.
-static int bytes_modificador(uint8_t cod) {
+int bytes_modificador(uint8_t cod) {
     int bytes = 0;
     if (cod == 0 || cod == 4) bytes = 4;
     else if (cod == 1)        bytes = 1;
@@ -558,7 +558,7 @@ static int bytes_modificador(uint8_t cod) {
 
 // Para un operando de memoria calcula cuantos bytes se acceden y a que direccion fisica.
 // Devuelve 0 (con mensaje) si el modificador es invalido o hay fallo de segmento.
-static int resolver_operando_memoria(Maquina_Virtual *mv, uint32_t valor, int *cant_bytes, uint32_t *dir_fisica) {
+int resolver_operando_memoria(Maquina_Virtual *mv, uint32_t valor, int *cant_bytes, uint32_t *dir_fisica) {
     int ok = 0;
     uint8_t cod_reg = valor & 0x1F;
     int16_t offset  = (int16_t)(valor >> 8); // conserva el signo
@@ -697,7 +697,7 @@ void ejecutar_RET(Maquina_Virtual *mv) {
 }
 
 // 1 si el IP apunta dentro del Code Segment (misma entrada de tabla que CS)
-int ip_en_codigo(const Maquina_Virtual *mv) {
+int ip_en_codigo(Maquina_Virtual *mv) {
     uint32_t ip = (uint32_t)mv->regs.vec[IP];
     uint32_t cs = (uint32_t)mv->regs.vec[CS];
     return ip != STOP && cs != 0xFFFFFFFFu && (ip >> 16) == (cs >> 16);

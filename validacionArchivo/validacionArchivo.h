@@ -4,6 +4,6 @@
 #include "componentes/mv.h"
 #include "args.h"
 
-int validacion_arch (const Configuracion *cfg, Maquina_Virtual *mv);
+int validacion_arch (Configuracion *cfg, Maquina_Virtual *mv);
 
 #endif
