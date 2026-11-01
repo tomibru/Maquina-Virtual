@@ -415,8 +415,12 @@ void ejecutar_SYS(Maquina_Virtual *mv) {
     uint32_t dir_fisica;
     uint32_t dir_logica_actual = mv->regs.vec[13];
 
+    if ((op == 1 || op == 2) && tamanio > 4) {
+        printf("Error: tamaño de celda invalido en SYS (%u). Maximo de 4 bytes.\n", tamanio);
+        mv->regs.vec[IP] = STOP;
+    }
     // --- READ (SYS 1) ---
-    if (op == 1) { 
+    else if (op == 1) { 
        for (int i = 0; i < cant_valores; i++) {
 
             // Traducimos en CADA iteracion para validar los limites del segmento por cada celda
@@ -447,8 +451,10 @@ void ejecutar_SYS(Maquina_Virtual *mv) {
                 mv->mem.ram[dir_fisica + b] = valor & 0xFF;
                 valor >>= 8;
             }
-                dir_logica_actual += tamanio;
+            dir_logica_actual += tamanio;
         }
+        int resto_linea;
+        while((resto_linea = getchar()) != '\n' && resto_linea != EOF);
     } 
         // --- WRITE (SYS 2) ---
     else if (op == 2) { 

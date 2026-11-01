@@ -252,7 +252,7 @@ int cargarProceso(FILE *arch, Configuracion *cfg, Maquina_Virtual *mv) {
     return 0;
     }
     
-    tam[S_PS] = calcularTamPS(cfg);
+    tam[S_PS] = (version == 2)?  calcularTamPS(cfg): 0;
 
     // 2. ¿Entra todo?
     if (!verificarEspacio(tam, memBytes, entry))
