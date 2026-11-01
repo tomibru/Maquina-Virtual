@@ -542,3 +542,4 @@ mostrar_r: mov edx, ds
       mov eax, 9
       sys 2                                  ; muestra obtenido / (celda 1 sin usar) / esperado
       ret
+
