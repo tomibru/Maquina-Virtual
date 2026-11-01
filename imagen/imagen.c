@@ -48,7 +48,7 @@ int guardar_imagen(Maquina_Virtual *mv) {
     int ok;
 
     if(arch == NULL) {
-        printf("Error: no se pudo cerar la imagen %s", mv->ruta_vmi);
+        printf("Error: no se pudo cerar la imagen %s.\n", mv->ruta_vmi);
         return 0;
     }
 
@@ -91,7 +91,7 @@ int cargar_imagen (char *ruta, Maquina_Virtual *mv) {
     uint32_t valor;
 
     if (arch == NULL) {
-        printf("Error: No se pudo abrir el archivo");
+        printf("Error: No se pudo abrir el archivo.\n");
         return 0;
     }
 

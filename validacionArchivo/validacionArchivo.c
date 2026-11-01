@@ -85,7 +85,7 @@ int leerCabecera(FILE *arch, uint8_t *version, uint32_t tam[], uint32_t *entry) 
 
     // Identificador (de 0 a 4) tiene que ser VMX26
     if(fread(id, 1, 5, arch) != 5 || strncmp(id, "VMX26", 5) != 0) {
-        printf("Error: Archivo invalido. Identxificador incorrecto");
+        printf("Error: Archivo invalido. Identxificador incorrecto.\n");
         return 0;
     }
     else {
@@ -95,21 +95,21 @@ int leerCabecera(FILE *arch, uint8_t *version, uint32_t tam[], uint32_t *entry) 
         }
         // Solo se aceptan las versiones 1 y 2
          else if (*version != 1 && *version != 2) {
-            printf("Error: Archvio invalido. Version incorrecta");
+            printf("Error: Archvio invalido. Version incorrecta.\n");
             return 0;
         }
         else {
             // Cabecera P1: solo trae el tamaño del codigo
             if(*version == 1) {
                 if (!leer2bytes(arch, &tam[S_CS])) {
-                    printf("Error: Archivo invaliodo. No se puedo leer el tamaño del codigo");
+                    printf("Error: Archivo invaliodo. No se puedo leer el tamaño del codigo.\n");
                     return 0;
                 }
             }
             // Cabecera P2: code, data, extra, stack, const y entry point
             else
                 if (!leer2bytes(arch, &tam[S_CS]) || !leer2bytes(arch, &tam[S_DS]) || !leer2bytes(arch, &tam[S_ES]) || !leer2bytes(arch, &tam[S_SS]) || !leer2bytes(arch, &tam[S_KS]) || !leer2bytes(arch, entry)) {
-                    printf("Error: Archivo invalido. Cabecera incompleta.");
+                    printf("Error: Archivo invalido. Cabecera incompleta.\n");
                     return 0;
                 }
         }
@@ -124,7 +124,7 @@ int verificarEspacio(uint32_t tam[], uint32_t memBytes, uint32_t entry) {
         total += tam[s];
     
     if (tam[S_PS] > 0xFFFF) {
-        printf("Error: los parametros exceden el Param Segment");
+        printf("Error: los parametros exceden el Param Segment.\n");
         return 0;
     }
 
@@ -134,12 +134,12 @@ int verificarEspacio(uint32_t tam[], uint32_t memBytes, uint32_t entry) {
     }
 
     if (tam[S_CS] == 0) {
-        printf("Error: Archivo invalido. El Code Segment esta vacio");
+        printf("Error: Archivo invalido. El Code Segment esta vacio.\n");
         return 0;
     }
 
     if(entry >= tam[S_CS]) {
-        printf("Error Archivo invalido. El entry point (%u) cae fuera del Code Segment", entry);
+        printf("Error Archivo invalido. El entry point (%u) cae fuera del Code Segment.\n", entry);
         return 0;
     }
 
@@ -298,7 +298,7 @@ int validacion_arch (Configuracion *cfg, Maquina_Virtual *mv) {
     int ok;
 
     if (arch == NULL) {
-        printf("Error: No se pudo abrir el archivo %s\n", cfg->ruta_vmx);
+        printf("Error: No se pudo abrir el archivo %s.\n", cfg->ruta_vmx);
         return 0;
     }
     ok = cargarProceso(arch, cfg, mv);

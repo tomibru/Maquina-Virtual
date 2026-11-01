@@ -158,7 +158,7 @@ void ejecutar_SUB(Maquina_Virtual *mv){
     guardar_valor_operando(mv,mv->regs.vec[2] ,resultado);
     
     // 4. Calcular Acarreo (C): vuelta completa sin signo (resultado menor a un sumando)
-    uint8_t c = (op1 >= op2) ? 1 : 0; // Préstamo (Borrow)
+    uint8_t c = (op1 < op2) ? 1 : 0; // Préstamo (Borrow)
 
     // 5. Calcular Overflow (V): incoherencia de signos (Pos+Pos=Neg o Neg+Neg=Pos)
     uint8_t signo_op1 = (op1 >> 31) & 1;
@@ -176,7 +176,7 @@ void ejecutar_CMP(Maquina_Virtual *mv){
     uint32_t resultado = op1 - op2;
     
     // 4. Calcular Acarreo (C): vuelta completa sin signo (resultado menor a un sumando)
-    uint8_t c = (op1 >= op2) ? 1 : 0; // Préstamo (Borrow)
+    uint8_t c = (op1 < op2) ? 1 : 0; // Préstamo (Borrow)
 
     // 5. Calcular Overflow (V): incoherencia de signos (Pos+Pos=Neg o Neg+Neg=Pos)
     uint8_t signo_op1 = (op1 >> 31) & 1;
@@ -214,8 +214,17 @@ void ejecutar_DIV(Maquina_Virtual *mv){
         return;
     }
     
-    uint32_t resultado = op1 / op2;
-    uint32_t resto = op1 % op2;
+    int32_t a = (int32_t)op1;
+    int32_t b = (int32_t)op2;
+    uint32_t resultado;
+    uint32_t resto;
+    if (a == INT32_MIN && b == -1) {   // unico caso que reventaria la CPU real
+        resultado = 0x80000000u;
+        resto = 0;
+    } else {
+        resultado = (uint32_t)(a / b);
+        resto = (uint32_t)(a % b);
+    }
     
     guardar_valor_operando(mv,mv->regs.vec[2] ,resultado);
     mv->regs.vec[16] = resto;
@@ -308,7 +317,7 @@ void ejecutar_SHR(Maquina_Virtual *mv){
     uint32_t op2 = obtener_valor_operando(mv, mv->regs.vec[3]);
 
     uint32_t resultado;
-    uint8_t c, v;
+    uint8_t c = 0, v = 0;
 
     if(op2 >= 32) {
         resultado = 0;
@@ -383,9 +392,14 @@ void ejecutar_RND(Maquina_Virtual *mv) {
     uint32_t op2 = obtener_valor_operando(mv, mv->regs.vec[3]);
 
     uint32_t resultado = 0;
-    if (op2 > 0) {
-        resultado = rand() % (op2 + 1); // Rango de 0 a op2 
+    if (op2 == 0xFFFFFFFF) {
+    resultado = (uint32_t)rand();   // op2 + 1 daria 0: se evita el modulo por cero 
     }
+    else 
+        if (op2 > 0) {
+            resultado = rand() % (op2 + 1); // Rango de 0 a op2
+        }
+
     guardar_valor_operando(mv, mv->regs.vec[2], resultado);
 
     modificar_flags_CC(mv, resultado, 0, 0);

@@ -10,7 +10,7 @@ int reservar_pila(Maquina_Virtual *mv) {
 
     // 2. Revisar si hubo stack overflow
     if((uint32_t)mv->regs.vec[SP] < (uint32_t)mv->regs.vec[SS]) {
-        printf("Error: Stack Overflow");
+        printf("Error: Stack Overflow.\n");
         mv->regs.vec[IP] = STOP;
         ok = 0;
     }
