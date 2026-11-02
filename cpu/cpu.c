@@ -405,6 +405,41 @@ void ejecutar_RND(Maquina_Virtual *mv) {
     modificar_flags_CC(mv, resultado, 0, 0);
 }
 
+int64_t interpretar_con_signo(uint32_t valor, uint16_t tamanio) {
+    int bits = tamanio * 8;
+    int64_t resultado = valor;
+
+    // Si el bit más significativo es 1, el número es negativo
+    if (valor & (1u << (bits - 1))) {
+        resultado -= (1LL << bits);
+    }
+
+    return resultado;
+}
+
+int leer_binario(uint32_t *valor) {
+    char entrada[33];
+    uint32_t resultado = 0;
+    int i = 0;
+
+    if (scanf("%32s", entrada) != 1)
+        return 0;
+
+    while (entrada[i] != '\0') {
+        if (entrada[i] != '0' && entrada[i] != '1')
+            return 0;
+
+        resultado = (resultado << 1) | (entrada[i] - '0');
+        i++;
+    }
+
+    if (i == 0)
+        return 0;
+
+    *valor = resultado;
+    return 1;
+}
+
 void ejecutar_SYS(Maquina_Virtual *mv) {
     uint32_t op = obtener_valor_operando(mv, mv->regs.vec[2]);
     uint16_t cant_valores = mv->regs.vec[12] & 0x0000FFFF;
@@ -444,6 +479,12 @@ void ejecutar_SYS(Maquina_Virtual *mv) {
                 scanf("%x", &valor);
             } else if (eax & 0x04) { // Octal
                 scanf("%o", &valor);
+            }else if (eax & 0x10) { // Binario
+                if (!leer_binario(&valor)) {
+                    printf("Error: formato binario invalido en SYS READ.\n");
+                    mv->regs.vec[IP] = STOP;
+                    return;
+                }
             }
 
             // Guardado byte por byte (Big Endian)
@@ -494,10 +535,10 @@ void ejecutar_SYS(Maquina_Virtual *mv) {
                 unsigned char c = (unsigned char)valor;
                 printf("%c ", (c >= 32 && c <= 126) ? c : '.');
             }
-            if (eax & 0x01) { // Decimal
-                printf("%d ", valor);
+            if (eax & 0x01) { // Decimal con signo
+                int64_t valor_decimal = interpretar_con_signo(valor, tamanio);
+                printf("%lld ", (long long)valor_decimal);
             }
-
             printf("\n");
             dir_logica_actual += tamanio;
         }

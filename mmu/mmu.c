@@ -22,9 +22,8 @@ int Traducir_DL_a_DF(Maquina_Virtual *mv, uint32_t dir_logica, uint16_t cant_byt
             printf("Error: Fallo de segmento. El segmento %u no esta inicializado.\n", segmento);
         }
         else{
-
             //Tercera validacion. Direccion fisica fuera del segmento
-            if((uint32_t)desplazamiento + cant_bytes > (uint32_t)mv->ts.vec[segmento].tamanio || (uint32_t)mv->ts.vec[segmento].tamanio + desplazamiento + cant_bytes > mv->mem.tam ) {
+            if((uint32_t)desplazamiento + cant_bytes > (uint32_t)mv->ts.vec[segmento].tamanio || (uint32_t)mv->ts.vec[segmento].base + desplazamiento + cant_bytes > mv->mem.tam ) {
                 //Solo muestra mensaje de error si es acceso a los datos.
                 //Si es lectura de instruccion(codesegment=1), no imprime error y devuelve 0 para terminar el bucle
                 if(!es_fetch)     
